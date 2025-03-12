@@ -1,0 +1,2 @@
+New Reactor.T_ground phases=1 bus1=1.4 bus2=1.0 R=1 X=0
+
