@@ -52,10 +52,20 @@ VUF2_before=(sqrt(abs(U1_sym_before[1]^2+ U1_sym_before[3]^2)))/ abs(U1_sym_befo
 _ODSS.Circuit.SetActiveBus("2")#
 U2_before = _ODSS.Bus.PuVoltage()
 [round(v, digits=3) for v in U2_before]
+U2_sym_before = calculate_symmetrical_components(U2_before[1:3]) # symmetrical components of voltage
+  [round(v, digits=4) for v in U2_sym_before] # rounding the measurement
+VUF1_2before =(abs(U2_sym_before[3])/abs(U2_sym_before[2]))*100 # |v_negative|/|v_positive| 
+VUF2_2before=(sqrt(abs(U2_sym_before[1]^2+ U2_sym_before[3]^2)))/ abs(U2_sym_before[2])*100 # sqrt(|v_zero|^2+|v_negative|^2)/|v_positive| 
+
+
 # voltage at bus 3
 _ODSS.Circuit.SetActiveBus("3")
 U3_before = _ODSS.Bus.PuVoltage()
 [round(v, digits=3) for v in U3_before]
+U3_sym_before = calculate_symmetrical_components(U3_before[1:3]) # symmetrical components of voltage
+  [round(v, digits=4) for v in U2_sym_before] # rounding the measurement
+VUF1_3before =(abs(U3_sym_before[3])/abs(U3_sym_before[2]))*100 # |v_negative|/|v_positive| 
+VUF2_3before=(sqrt(abs(U3_sym_before[1]^2+ U3_sym_before[3]^2)))/ abs(U3_sym_before[2])*100 # sqrt(|v_zero|^2+|v_negative|^2)/|v_positive| 
 
 ##########
 # 2- current at the substation and calculate the phase current balance factor (PCBF)
@@ -72,9 +82,9 @@ I_sub_before= get_substation_currents()
 I_sub_sym_before = calculate_symmetrical_components(I_sub_before[1:3])# current I_sub symmetrical components
 [round(i, digits=3) for i in I_sub_sym_before]# rounding the measurement
 ## current unbalance factor
-I_A = abs(I_sub_a_before)  # Magnitude of phase A
-I_B = abs(I_sub_b_before)  # Magnitude of phase B
-I_C = abs(I_sub_c_before)  # Magnitude of phase C
+I_A = abs(I_sub_before[1])  # Magnitude of phase A
+I_B = abs(I_sub_before[2])  # Magnitude of phase B
+I_C = abs(I_sub_before[3])  # Magnitude of phase C
 I1_avg = (I_A + I_B + I_C) / 3
 PCBF_before = I1_avg / maximum([I_A, I_B, I_C]) #CUF= average current/max(Ia,Ib,Ic)
 
@@ -117,7 +127,7 @@ I_comp_sym = calculate_symmetrical_components(I_comp)
 mag1_I_comp, mag2_I_comp, mag3_I_comp= abs.(I_comp)  # Compute magnitude
 ang1_I_comp, ang2_I_comp, ang3_I_comp= angle.(I_comp) .* (180 / π)  # Convert radians to degrees
 
-########
+######## ADD COMPENSATOR ########
 ## 5- Injecting the compensation current as current sources to the end of feeder
 OpenDSSDirect.Text.Command("New ISource.IDG1 Bus1=3.1.4 Phases=1  , amps = $mag1_I_comp, ang = $ang1_I_comp")
 OpenDSSDirect.Text.Command("New ISource.IDG2 Bus1=3.2.4 Phases=1  , amps = $mag2_I_comp, ang = $ang2_I_comp")
@@ -179,8 +189,8 @@ U2_after = _ODSS.Bus.PuVoltage()
 [round(v, digits=3) for v in U2_after]
 U2_sym_after = calculate_symmetrical_components(U2_after[1:3])
 [round(v, digits=3) for v in U2_sym_after]
-VUF1_1after = (abs(U2_sym_after[3])/abs(U2_sym_after[2]))*100
-VUF2_1after=(sqrt(abs(U2_sym_after[1]^2+ U2_sym_after[3]^2)))/ abs(U2_sym_after[2])*100 # sqrt(|v_zero|^2+|v_negative|^2)/|v_positive| 
+VUF1_2after = (abs(U2_sym_after[3])/abs(U2_sym_after[2]))*100
+VUF2_2after=(sqrt(abs(U2_sym_after[1]^2+ U2_sym_after[3]^2))/ abs(U2_sym_after[2]))*100 # sqrt(|v_zero|^2+|v_negative|^2)/|v_positive| 
 
 # voltage at bus 3 after compensation
 _ODSS.Circuit.SetActiveBus("3")
@@ -189,11 +199,10 @@ U3_after = _ODSS.Bus.PuVoltage()
 U3_sym_after = calculate_symmetrical_components(U3_after[1:3])
 [round(v, digits=3) for v in U3_sym_after]
 VUF1_2after = (abs(U3_sym_after[3])/abs(U3_sym_after[2]))*100
-VUF2_2after=(sqrt(abs(U3_sym_after[1]^2+ U3_sym_after[3]^2)))/ abs(U3_sym_after[2])*100 # sqrt(|v_zero|^2+|v_negative|^2)/|v_positive| 
+VUF2_2after=(sqrt(abs(U3_sym_after[1]^2+ U3_sym_after[3]^2))/ abs(U3_sym_after[2]))*100 # sqrt(|v_zero|^2+|v_negative|^2)/|v_positive| 
 
 #### 
 voltage_after = get_bus_voltages()#voltage magnitude at all buses after compensation
-load_currents_after, load_phases_after = get_load_currents(loads) #currents at all loads after compensation
 
 
 ######## PLOTTING THE RESULTS #####
@@ -224,59 +233,87 @@ plot!(bus_indices, voltages_after_phase1, label="After - Phase A", marker=:squar
 plot!(bus_indices, voltages_after_phase2, label="After - Phase B", marker=:square, linestyle=:dash, color=:lightgreen)
 plot!(bus_indices, voltages_after_phase3, label="After - Phase C", marker=:square, linestyle=:dash, color=:pink)
 
-### 2- Plotting the load currents before and after compensation
-# Convert Dict values to arrays for plotting
-load_labels = collect(loads)  # Keep original load order
-load_indices = collect(1:length(load_labels))  # Numeric indices to correctly place labels
+### 2- Plotting the line currents before and after compensation
+# Define line names and phases
+line_labels = ["L12-A", "L12-B", "L12-C", "L12-N",
+               "L23-A", "L23-B", "L23-C", "L23-N"]
 
-currents_before_values = [load_currents_before[load] for load in load_labels]
-currents_after_values = [load_currents_after[load] for load in load_labels]
-phases_before_values = [load_phases_before[load] for load in load_labels]
-phases_after_values = [load_phases_after[load] for load in load_labels]
+# Create a numeric index for each phase of each line
+line_indices = collect(1:length(line_labels))
 
-# --- 2.1. CURRENT MAGNITUDE PROFILE ACROSS LOADS ---
-plot(load_indices, currents_before_values, 
+# Flatten current magnitudes into one list for proper plotting
+I_before_mags = vcat(I_l12_before_mags, I_l23_before_mags)
+I_after_mags  = vcat(I_l12_after_mags, I_l23_after_mags)
+
+# --- 2.1. LINE PLOT (Line Current Profile per Phase) ---
+plot(line_indices, I_before_mags, 
     label="Before Compensation", 
     marker=:circle, 
     linestyle=:solid, 
-    color=:blue, 
-    xlabel="Load", 
+    color=:blue,
+    xlabel="Line & Phase", 
     ylabel="Current Magnitude (A)", 
-    title="Load Current Profile", 
-    legend=:best, 
-    xticks=(load_indices, load_labels),  # Ensure correct label assignment
+    title="Line Current Profile (Before vs. After Compensation)", 
+    legend=:best,
+    xticks=(line_indices, line_labels), 
     rotation=45, 
-    size=(700,400)
+    size=(600, 500)
 )
 
-plot!(load_indices, currents_after_values, 
+plot!(line_indices, I_after_mags, 
     label="After Compensation", 
     marker=:square, 
     linestyle=:dash, 
     color=:red
 )
 
-# --- 2.2 CURRENT PHASE PROFILE ACROSS LOADS ---
-plot(load_indices, phases_before_values, 
+
+# Define phase labels
+phase_labels = ["Phase A", "Phase B", "Phase C", "Neutral"]
+phase_indices = collect(1:length(phase_labels))  # Numeric indices for phases
+
+# --- 2.2 LINE PLOT for L12 ---
+plot(phase_indices, I_l12_before_mags, 
     label="Before Compensation", 
     marker=:circle, 
     linestyle=:solid, 
-    color=:blue, 
-    xlabel="Load", 
-    ylabel="Phase Angle (Degrees)", 
-    title="Load Current Phase Profile", 
-    legend=:topright, 
-    xticks=(load_indices, load_labels),  # Ensure correct label assignment
-    rotation=45, 
-    size=(750,500)
+    color=:blue,
+    xlabel="Phase", 
+    ylabel="Current Magnitude (A)", 
+    title="Line L12 Current Profile (Before vs. After Compensation)", 
+    legend=:best,
+    xticks=(phase_indices, phase_labels), 
+    size=(600, 400)
 )
 
-plot!(load_indices, phases_after_values, 
+plot!(phase_indices, I_l12_after_mags, 
     label="After Compensation", 
     marker=:square, 
     linestyle=:dash, 
     color=:red
 )
+
+# --- 2.3 LINE PLOT for L23 ---
+plot(phase_indices, I_l23_before_mags, 
+    label="Before Compensation", 
+    marker=:circle, 
+    linestyle=:solid, 
+    color=:blue,
+    xlabel="Phase", 
+    ylabel="Current Magnitude (A)", 
+    title="Line L23 Current Profile (Before vs. After Compensation)", 
+    legend=:best,
+    xticks=(phase_indices, phase_labels), 
+    size=(600, 400)
+)
+
+plot!(phase_indices, I_l23_after_mags, 
+    label="After Compensation", 
+    marker=:square, 
+    linestyle=:dash, 
+    color=:red
+)
+
 ######
 ### 3- transformer current
 I_sub_before_mags = [abs(i) for i in I_sub_before]
