@@ -44,10 +44,11 @@ U1_sub_before = _ODSS.Bus.PuVoltage()
  [round(v, digits=3) for v in U1_sub_before] # rounding the measurement
 U1_sym_before = calculate_symmetrical_components(U1_sub_before[1:3]) # symmetrical components of voltage
   [round(v, digits=4) for v in U1_sym_before] # rounding the measurement
-
+# voltage unbalance factor
 VUF1_before =(abs(U1_sym_before[3])/abs(U1_sym_before[2]))*100 # |v_negative|/|v_positive| 
 VUF2_before=(sqrt(abs(U1_sym_before[1]^2+ U1_sym_before[3]^2)))/ abs(U1_sym_before[2])*100 # sqrt(|v_zero|^2+|v_negative|^2)/|v_positive| 
 
+volt= _ODSS.Bus.VMagAngle()# voltage magnitude and angle
 # voltage at bus 2
 _ODSS.Circuit.SetActiveBus("2")#
 U2_before = _ODSS.Bus.PuVoltage()

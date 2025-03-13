@@ -10,9 +10,9 @@ Redirect new_line.txt
 Redirect new_load.txt
 Redirect new_reactor.txt
 
-Set Voltagebases=[11.0, 0.415]
+!Set Voltagebases=[11.0, 0.415]
+Set Voltagebases=[0.4, 0.415, 11.0]
 
 Calcvoltagebases
-
 
 Solve
