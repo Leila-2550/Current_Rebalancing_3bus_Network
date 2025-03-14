@@ -37,93 +37,131 @@ OpenDSSDirect.Solution.Solve() # Solving the network
 function calculate_symmetrical_components(phase_currents)
     return F * phase_currents
 end
+# Function to calculate VUF
+function calculate_VUF(U_sym)
+    # Extract voltage sequence components
+    v_zero = abs(U_sym[1])
+    v_positive = abs(U_sym[2])
+    v_negative = abs(U_sym[3])
+    # Calculate Voltage Unbalance Factors
+    VUF1 = (v_negative / v_positive) 
+    VUF2 = (sqrt(v_zero^2 + v_negative^2) / v_positive) 
+    return VUF1, VUF2
+end
 
-### 1- Measuring the voltage at the substation and compute the unbalance factor based on 2 approaches
-_ODSS.Circuit.SetActiveBus("1")#subsation bus
-U1_sub_before = _ODSS.Bus.PuVoltage()
- [round(v, digits=3) for v in U1_sub_before] # rounding the measurement
-U1_sym_before = calculate_symmetrical_components(U1_sub_before[1:3]) # symmetrical components of voltage
-  [round(v, digits=4) for v in U1_sym_before] # rounding the measurement
+function calaculate_PCBF(I_value)
+    I_A = abs(I_value[1])  # Mag of phase A
+    I_B = abs(I_value[2])  # Mag of phase B
+    I_C = abs(I_value[3])  # Mag of phase C
+    I1_avg = (I_A + I_B + I_C) / 3
+    PCBF= I1_avg / maximum([I_A, I_B, I_C]) #PCBF= average current/max(Ia,Ib,Ic)
+    return PCBF
+end
+
+#function to measure the voltage at a specific bus
+function measure_voltage(bus_name)
+    _ODSS.Circuit.SetActiveBus(bus_name)  # Set the active bus
+    voltage_magang = _ODSS.Bus.VMagAngle()  # Get voltage magnitudes and angles
+    voltages= [round(v, digits=2) for v in voltage_magang] # rounding the measurement
+    # Ensure the voltage vector has exactly 8 elements (3 phases + neutral)
+    if length(voltage_magang) != 8
+        error("Voltage vector must have exactly 8 elements (3 phases + neutral).")
+    end
+    va = (voltages[1],voltages[2]) # Phase A
+    vb = (voltages[3],voltages[4]) # Phase B
+    vc = (voltages[5],voltages[6]) # Phase C
+    vn = (voltages[7],voltages[8]) # Neutral
+    return va, vb, vc, vn
+end
+
+function convert_to_complex(input_tuple)
+    value1 = [v[1] * cis(deg2rad(v[2])) for v in input_tuple]
+    return [round(v, digits=2) for v in value1]
+end
+
+# Function to calculate the current at a specific element
+function calculate_current(element_name)
+    _ODSS.Circuit.SetActiveElement(element_name)  # Set the active element
+    currents = _ODSS.CktElement.Currents()  # Get complex current values
+    # Extract and round phase currents
+    I_a = round(currents[5], digits=2)
+    I_b = round(currents[6], digits=2)
+    I_c = round(currents[7], digits=2)
+    I_n = round(currents[8], digits=2)
+    return [I_a, I_b, I_c, I_n] 
+end
+##################
+# Main Script
+##################
+### 1- voltage at the substation and calculate the voltage unbalance factor (VUF)
+U1_before= measure_voltage("1")
+U1_complex_before= convert_to_complex(U1_before)
+U1_sym_before = calculate_symmetrical_components(U1_complex_before[1:3]) # symmetrical components of voltage
+  [round(v, digits=2) for v in U1_sym_before] # rounding the measurement
 # voltage unbalance factor
-VUF1_before =(abs(U1_sym_before[3])/abs(U1_sym_before[2]))*100 # |v_negative|/|v_positive| 
-VUF2_before=(sqrt(abs(U1_sym_before[1]^2+ U1_sym_before[3]^2)))/ abs(U1_sym_before[2])*100 # sqrt(|v_zero|^2+|v_negative|^2)/|v_positive| 
+VUF_1before = calculate_VUF(U1_sym_before)
+[round(v, digits=4) for v in VUF_1before] # rounding the measurement
 
-volt= _ODSS.Bus.VMagAngle()# voltage magnitude and angle
 # voltage at bus 2
-_ODSS.Circuit.SetActiveBus("2")#
-U2_before = _ODSS.Bus.PuVoltage()
-[round(v, digits=3) for v in U2_before]
-U2_sym_before = calculate_symmetrical_components(U2_before[1:3]) # symmetrical components of voltage
-  [round(v, digits=4) for v in U2_sym_before] # rounding the measurement
-VUF1_2before =(abs(U2_sym_before[3])/abs(U2_sym_before[2]))*100 # |v_negative|/|v_positive| 
-VUF2_2before=(sqrt(abs(U2_sym_before[1]^2+ U2_sym_before[3]^2)))/ abs(U2_sym_before[2])*100 # sqrt(|v_zero|^2+|v_negative|^2)/|v_positive| 
-
+U2_before= measure_voltage("2")
+U2_complex_before= convert_to_complex(U2_before)
+U2_sym_before = calculate_symmetrical_components(U2_complex_before[1:3]) # symmetrical components of voltage
+  [round(v, digits=2) for v in U2_sym_before] # rounding the measurement
+# voltage unbalance factor
+VUF_2before = calculate_VUF(U2_sym_before)
+[round(v, digits=4) for v in VUF_2before] # rounding the measurement
 
 # voltage at bus 3
-_ODSS.Circuit.SetActiveBus("3")
-U3_before = _ODSS.Bus.PuVoltage()
-[round(v, digits=3) for v in U3_before]
-U3_sym_before = calculate_symmetrical_components(U3_before[1:3]) # symmetrical components of voltage
-  [round(v, digits=4) for v in U2_sym_before] # rounding the measurement
-VUF1_3before =(abs(U3_sym_before[3])/abs(U3_sym_before[2]))*100 # |v_negative|/|v_positive| 
-VUF2_3before=(sqrt(abs(U3_sym_before[1]^2+ U3_sym_before[3]^2)))/ abs(U3_sym_before[2])*100 # sqrt(|v_zero|^2+|v_negative|^2)/|v_positive| 
+U3_before= measure_voltage("3")
+U3_complex_before= convert_to_complex(U3_before)
+U3_sym_before = calculate_symmetrical_components(U3_complex_before[1:3]) # symmetrical components of voltage
+  [round(v, digits=2) for v in U3_sym_before] # rounding the measurement
+# voltage unbalance factor
+VUF_3before = calculate_VUF(U3_sym_before)
+[round(v, digits=4) for v in VUF_3before] # rounding the measurement
 
 ##########
-# 2- current at the substation and calculate the phase current balance factor (PCBF)
-function get_substation_currents()
-    _ODSS.Circuit.SetActiveElement("Transformer.tr1")
-    currents = _ODSS.CktElement.Currents() # _ODSS.CktElement.CurrentsMagAng() # to get the magnitude and angle
-    I_a = round(currents[5] , digits=2)
-    I_b = round(currents[6] , digits=2)
-    I_c = round(currents[7] , digits=2)
-    I_n = round(currents[8] , digits=2)
-    return [I_a, I_b, I_c, I_n]
-end
-I_sub_before= get_substation_currents()
+# 2- current at the substation and other lines and phase current balance factor (PCBF)
+
+I_sub_before= calculate_current("Transformer.tr1")
 I_sub_sym_before = calculate_symmetrical_components(I_sub_before[1:3])# current I_sub symmetrical components
-[round(i, digits=3) for i in I_sub_sym_before]# rounding the measurement
+[round(i, digits=2) for i in I_sub_sym_before]# rounding the measurement
 ## current unbalance factor
-I_A = abs(I_sub_before[1])  # Magnitude of phase A
-I_B = abs(I_sub_before[2])  # Magnitude of phase B
-I_C = abs(I_sub_before[3])  # Magnitude of phase C
-I1_avg = (I_A + I_B + I_C) / 3
-PCBF_before = I1_avg / maximum([I_A, I_B, I_C]) #CUF= average current/max(Ia,Ib,Ic)
+PCBF_1before = calaculate_PCBF(I_sub_before)
+_ODSS.Circuit.SetActiveElement("Transformer.tr1")
+I_sub_mags_before = _ODSS.CktElement.CurrentsMagAng()[9:16] # to get the magnitude and angle
+[round(i, digits=2) for i in I_sub_mags_before]# rounding the measurement
 
 #### 3- calculating the load current I_L12
-function calculate_I2()
-    _ODSS.Circuit.SetActiveElement("Line.line_75588050_2_1")
-    currents = _ODSS.CktElement.Currents() # _ODSS.CktElement.CurrentsMagAng() # to get the magnitude and angle
-    I_a = round(currents[5] , digits=2)
-    I_b = round(currents[6] , digits=2)
-    I_c = round(currents[7] , digits=2)
-    I_n = round(currents[8] , digits=2)
-    return [I_a, I_b, I_c, I_n]
-end
-I_l12_before = calculate_I2()
-I_l12_0_before, I_l12_1_before,I_l12_2_before= calculate_symmetrical_components(I_l12_before[1:3])
-#####
+I_l12_before= calculate_current("Line.line_75588050_2_1")
+I_l12_sym_before = calculate_symmetrical_components(I_l12_before[1:3])# current I_sub symmetrical components
+[round(i, digits=2) for i in I_l12_sym_before]# rounding the measurement
+## current unbalance factor
+PCBF_2before = calaculate_PCBF(I_l12_before)
+_ODSS.Circuit.SetActiveElement("Line.line_75588050_2_1")
+I_l12_mags_before = _ODSS.CktElement.CurrentsMagAng()[9:16] # to get the magnitude and angle
+[round(i, digits=2) for i in I_l12_mags_before]
+#####"
 #current I_L23
-function calculate_I3()
-    _ODSS.Circuit.SetActiveElement("Line.line_75588639_3_2")
-    currents = _ODSS.CktElement.Currents() # _ODSS.CktElement.CurrentsMagAng() # to get the magnitude and angle
-    I_a = round(currents[5] , digits=2)
-    I_b = round(currents[6] , digits=2)
-    I_c = round(currents[7] , digits=2)
-    I_n = round(currents[8] , digits=2)
-    return [I_a, I_b, I_c, I_n]
-end
-I_l23_before = calculate_I3()
-I_l23_0_before, I_l23_1_before,I_l23_2_before= calculate_symmetrical_components(I_l23_before[1:3])
+I_l23_before= calculate_current("Line.line_75588639_3_2")
+I_l23_sym_before = calculate_symmetrical_components(I_l23_before[1:3])# current I_sub symmetrical components
+[round(i, digits=2) for i in I_l23_sym_before]# rounding the measurement
+## current unbalance factor
+PCBF_2before = calaculate_PCBF(I_l23_before)
+_ODSS.Circuit.SetActiveElement("Line.line_75588639_3_2")
+I_l23_mags_before = _ODSS.CktElement.CurrentsMagAng()[9:16] # to get the magnitude and angle
+[round(i, digits=2) for i in I_l23_mags_before]
 #########
+
 ## 4- Calculating the Compensation Current I_comp
 M1= [0 0 0; 0 0 0;0 0 1]# only zero sequence
 M2= [1 0 0; 0 0 0;0 0 1]# negative and zero sequence ***
 
 I_comp = -F_inv * M2 * F * I_l12_before[1:3]
-[round(i, digits=3) for i in I_comp]# rounding the measurement
-I_comp_n=-(I_comp[1]+I_comp[2]+I_comp[3])
+[round(i, digits=2) for i in I_comp]# rounding the measurement
+I_comp_n=(I_comp[1]+I_comp[2]+I_comp[3])
 I_comp_sym = calculate_symmetrical_components(I_comp)
-[round(i, digits=3) for i in I_comp_sym]# rounding the measurement
+[round(i, digits=2) for i in I_comp_sym]# rounding the measurement
 # Compute magnitude and phase angle (in degrees) for each phase
 mag1_I_comp, mag2_I_comp, mag3_I_comp= abs.(I_comp)  # Compute magnitude
 ang1_I_comp, ang2_I_comp, ang3_I_comp= angle.(I_comp) .* (180 / π)  # Convert radians to degrees
@@ -160,47 +198,61 @@ voltage_before = get_bus_voltages()
 OpenDSSDirect.Solution.Solve()
 
 ### 7- Substation current after compensation
-I_sub_after = get_substation_currents()
-# Calculate symmetrical components of the compensated currents
-II_sub_sym_after = calculate_symmetrical_components(I_sub_after[1:3])
-[round(i, digits=3) for i in II_sub_sym_after]
-# Check PCBF after compensation
-I_A = abs(I_sub_after[1])
-I_B = abs(I_sub_after[2])
-I_C = abs(I_sub_after[3])
-I1_avg_after = (I_A + I_B + I_C) / 3
-PCBF_after = I1_avg_after / maximum([I_A, I_B, I_C])
-#currents at other lines
-I_l12_after = calculate_I2()
-I_l23_after = calculate_I3()
+I_sub_after= calculate_current("Transformer.tr1")
+I_sub_sym_after = calculate_symmetrical_components(I_sub_after[1:3])# current I_sub symmetrical components
+[round(i, digits=2) for i in I_sub_sym_after]# rounding the measurement
+## current unbalance factor
+PCBF_1after = calaculate_PCBF(I_sub_after)
+_ODSS.Circuit.SetActiveElement("Transformer.tr1")
+I_sub_mags_after = _ODSS.CktElement.CurrentsMagAng()[9:16] # to get the magnitude and angle
+[round(i, digits=2) for i in I_sub_mags_after]# rounding the measurement
+
+#### 3- calculating the load current I_L12
+I_l12_after= calculate_current("Line.line_75588050_2_1")
+I_l12_sym_after = calculate_symmetrical_components(I_l12_after[1:3])# current I_sub symmetrical components
+[round(i, digits=2) for i in I_l12_sym_after]# rounding the measurement
+## current unbalance factor
+PCBF_2after = calaculate_PCBF(I_l12_after)
+_ODSS.Circuit.SetActiveElement("Line.line_75588050_2_1")
+I_l12_mags_after = _ODSS.CktElement.CurrentsMagAng()[9:16] # to get the magnitude and angle
+[round(i, digits=2) for i in I_l12_mags_after]
+#####"Line.line_75588639_3_2"
+#current I_L23
+I_l23_after= calculate_current("Line.line_75588639_3_2")
+I_l23_sym_after = calculate_symmetrical_components(I_l23_after[1:3])# current I_sub symmetrical components
+[round(i, digits=2) for i in I_l23_sym_after]# rounding the measurement
+## current unbalance factor
+PCBF_2after = calaculate_PCBF(I_l23_after)
+_ODSS.Circuit.SetActiveElement("Line.line_75588639_3_2")
+I_l23_mags_after = _ODSS.CktElement.CurrentsMagAng()[9:16] # to get the magnitude and angle
+[round(i, digits=2) for i in I_l23_mags_after]
 
 ### 8- voltage at substation after
-_ODSS.Circuit.SetActiveBus("1")
-U1_sub_after = _ODSS.Bus.PuVoltage() 
-[round(v, digits=3) for v in U1_sub_after]
-# voltage_sub_after = measure_voltage("6687")
-U1_sym_after = calculate_symmetrical_components(U1_sub_after[1:3])
-[round(v, digits=3) for v in U1_sym_after]
-VUF1_after = (abs(U1_sym_after[3])/abs(U1_sym_after[2]))*100
-VUF2_after=(sqrt(abs(U1_sym_after[1]^2+ U1_sym_after[3]^2)))/ abs(U1_sym_after[2])*100 # sqrt(|v_zero|^2+|v_negative|^2)/|v_positive| 
+U1_after= measure_voltage("1")
+U1_complex_aft= convert_to_complex(U1_after)
+U1_sym_after = calculate_symmetrical_components(U1_complex_aft[1:3]) # symmetrical components of voltage
+  [round(v, digits=2) for v in U1_sym_after] # rounding the measurement
+# voltage unbalance factor
+VUF_1after = calculate_VUF(U1_sym_after)
+[round(v, digits=4) for v in VUF_1after] # rounding the measurement
 
 # voltage at bus 2 after compensation
-_ODSS.Circuit.SetActiveBus("2")#
-U2_after = _ODSS.Bus.PuVoltage()
-[round(v, digits=3) for v in U2_after]
-U2_sym_after = calculate_symmetrical_components(U2_after[1:3])
-[round(v, digits=3) for v in U2_sym_after]
-VUF1_2after = (abs(U2_sym_after[3])/abs(U2_sym_after[2]))*100
-VUF2_2after=(sqrt(abs(U2_sym_after[1]^2+ U2_sym_after[3]^2))/ abs(U2_sym_after[2]))*100 # sqrt(|v_zero|^2+|v_negative|^2)/|v_positive| 
+U2_after= measure_voltage("2")
+U2_complex_aft= convert_to_complex(U2_after)
+U2_sym_after = calculate_symmetrical_components(U2_complex_aft[1:3]) # symmetrical components of voltage
+  [round(v, digits=2) for v in U2_sym_after] # rounding the measurement
+# voltage unbalance factor
+VUF_2after = calculate_VUF(U2_sym_after)
+[round(v, digits=4) for v in VUF_2after] # rounding the measurement
 
 # voltage at bus 3 after compensation
-_ODSS.Circuit.SetActiveBus("3")
-U3_after = _ODSS.Bus.PuVoltage()
-[round(v, digits=3) for v in U3_after]
-U3_sym_after = calculate_symmetrical_components(U3_after[1:3])
-[round(v, digits=3) for v in U3_sym_after]
-VUF1_2after = (abs(U3_sym_after[3])/abs(U3_sym_after[2]))*100
-VUF2_2after=(sqrt(abs(U3_sym_after[1]^2+ U3_sym_after[3]^2))/ abs(U3_sym_after[2]))*100 # sqrt(|v_zero|^2+|v_negative|^2)/|v_positive| 
+U3_after= measure_voltage("3")
+U3_complex_aft= convert_to_complex(U3_after)
+U3_sym_after = calculate_symmetrical_components(U3_complex_aft[1:3]) # symmetrical components of voltage
+  [round(v, digits=2) for v in U3_sym_after] # rounding the measurement
+# voltage unbalance factor
+VUF_3after = calculate_VUF(U3_sym_after)
+[round(v, digits=4) for v in VUF_3after] # rounding the measurement
 
 #### 
 voltage_after = get_bus_voltages()#voltage magnitude at all buses after compensation
@@ -235,16 +287,19 @@ plot!(bus_indices, voltages_after_phase2, label="After - Phase B", marker=:squar
 plot!(bus_indices, voltages_after_phase3, label="After - Phase C", marker=:square, linestyle=:dash, color=:pink)
 
 ### 2- Plotting the line currents before and after compensation
-# Define line names and phases
 line_labels = ["L12-A", "L12-B", "L12-C", "L12-N",
                "L23-A", "L23-B", "L23-C", "L23-N"]
-
 # Create a numeric index for each phase of each line
 line_indices = collect(1:length(line_labels))
+I_l12_before_mags = [abs(I) for I in I_l12_before]  # Magnitudes for line L12 before
+I_l12_after_mags = [abs(I) for I in I_l12_after]    # Magnitudes for line L12 after
 
+I_l23_before_mags = [abs(I) for I in I_l23_before]  # Magnitudes for line L23 before
+I_l23_after_mags = [abs(I) for I in I_l23_after]    # Magnitudes for line L23 after
 # Flatten current magnitudes into one list for proper plotting
 I_before_mags = vcat(I_l12_before_mags, I_l23_before_mags)
 I_after_mags  = vcat(I_l12_after_mags, I_l23_after_mags)
+
 
 # --- 2.1. LINE PLOT (Line Current Profile per Phase) ---
 plot(line_indices, I_before_mags, 
@@ -267,7 +322,6 @@ plot!(line_indices, I_after_mags,
     linestyle=:dash, 
     color=:red
 )
-
 
 # Define phase labels
 phase_labels = ["Phase A", "Phase B", "Phase C", "Neutral"]
@@ -380,25 +434,25 @@ gcf()
 
 
 println("Plotting Substation Voltage before Compensation")
-phasorcosine(abs(U1_sub_before[1]), angle(U1_sub_before[1]), ylabel=L"$i$", maglabel=L"$\hat{V1}_a$", 
+phasorcosine(abs(U1_complex_before[1]), angle(U1_complex_before[1]), ylabel=L"$i$", maglabel=L"$\hat{V1}_a$", 
     labelrsep=0.5, figsize=(7*a, 2.5*a), color="blue", linestyle="--")
-phasorcosine(abs(U1_sub_before[2]), angle(U1_sub_before[2]), ylabel=L"$i$", maglabel=L"$\hat{V1}_b$", 
+phasorcosine(abs(U1_complex_before[2]), angle(U1_complex_before[2]), ylabel=L"$i$", maglabel=L"$\hat{V1}_b$", 
     labelrsep=0.5, color="green", linestyle="--", add=true)
-phasorcosine(abs(U1_sub_before[3]), angle(U1_sub_before[3]), ylabel=L"$i$", maglabel=L"$\hat{V1}_c$ ", 
+phasorcosine(abs(U1_complex_before[3]), angle(U1_complex_before[3]), ylabel=L"$i$", maglabel=L"$\hat{V1}_c$ ", 
     labelrsep=0.5, color="red", linestyle="--", add=true)
-phasorcosine(abs(U1_sub_before[4]), angle(U1_sub_before[4]), ylabel=L"$i$", maglabel=L"$\hat{V1}_n$ ", 
+phasorcosine(abs(U1_complex_before[4]), angle(U1_complex_before[4]), ylabel=L"$i$", maglabel=L"$\hat{V1}_n$ ", 
     labelrsep=0.5, color="red", linestyle="--", add=true)
 
 gcf()
 
 println("Plotting Substation Voltage after Compensation")
-phasorcosine(abs(U1_sub_after[1]), angle(U1_sub_after[1]), ylabel=L"$i$", maglabel=L"$\hat{V1}_a$", 
+phasorcosine(abs(U1_complex_aft[1]), angle(U1_complex_aft[1]), ylabel=L"$i$", maglabel=L"$\hat{U1}_a$", 
     labelrsep=0.5, figsize=(7*a, 2.5*a), color="blue", linestyle="--")
-phasorcosine(abs(U1_sub_after[2]), angle(U1_sub_after[2]), ylabel=L"$i$", maglabel=L"$\hat{V1}_b$", 
+phasorcosine(abs(U1_complex_aft[2]), angle(U1_complex_aft[2]), ylabel=L"$i$", maglabel=L"$\hat{U1}_b$", 
     labelrsep=0.5, color="green", linestyle="--", add=true)
-phasorcosine(abs(U1_sub_after[3]), angle(U1_sub_after[3]), ylabel=L"$i$", maglabel=L"$\hat{V1}_c$ ", 
+phasorcosine(abs(U1_complex_aft[3]), angle(U1_complex_aft[3]), ylabel=L"$i$", maglabel=L"$\hat{U1}_c$ ", 
     labelrsep=0.5, color="red", linestyle="--", add=true)
-phasorcosine(abs(U1_sub_after[4]), angle(U1_sub_after[4]), ylabel=L"$i$", maglabel=L"$\hat{V1}_n$ ", 
+phasorcosine(abs(U1_complex_aft[4]), angle(U1_complex_aft[4]), ylabel=L"$i$", maglabel=L"$\hat{U1}_n$ ", 
     labelrsep=0.5, color="red", linestyle="--", add=true)
 
 gcf()
@@ -406,25 +460,51 @@ gcf()
 
 
 println("Plotting  Voltage at bus 2 before Compensation")
-phasorcosine(abs(U2_before[1]), angle(U2_before[1]), ylabel=L"$i$", maglabel=L"$\hat{V1}_a$", 
+phasorcosine(abs(U2_complex_before[1]), angle(U2_complex_before[1]), ylabel=L"$i$", maglabel=L"$\hat{U2}_a$", 
     labelrsep=0.5, figsize=(7*a, 2.5*a), color="blue", linestyle="--")
-phasorcosine(abs(U2_before[2]), angle(U2_before[2]), ylabel=L"$i$", maglabel=L"$\hat{V1}_b$", 
+phasorcosine(abs(U2_complex_before[2]), angle(U2_complex_before[2]), ylabel=L"$i$", maglabel=L"$\hat{U2}_b$", 
     labelrsep=0.5, color="green", linestyle="--", add=true)
-phasorcosine(abs(U2_before[3]), angle(U2_before[3]), ylabel=L"$i$", maglabel=L"$\hat{V1}_c$ ", 
+phasorcosine(abs(U2_complex_before[3]), angle(U2_complex_before[3]), ylabel=L"$i$", maglabel=L"$\hat{U2}_c$ ", 
     labelrsep=0.5, color="red", linestyle="--", add=true)
-phasorcosine(abs(U2_before[4]), angle(U2_before[4]), ylabel=L"$i$", maglabel=L"$\hat{V1}_n$ ", 
+phasorcosine(abs(U2_complex_before[4]), angle(U2_complex_before[4]), ylabel=L"$i$", maglabel=L"$\hat{U2}_n$ ", 
     labelrsep=0.5, color="red", linestyle="--", add=true)
 
 gcf()
 
 println("Plotting Voltage at bus 2 after Compensation")
-phasorcosine(abs(U2_after[1]), angle(U2_after[1]), ylabel=L"$i$", maglabel=L"$\hat{V1}_a$", 
+phasorcosine(abs(U2_complex_aft[1]), angle(U2_complex_aft[1]), ylabel=L"$i$", maglabel=L"$\hat{U2}_a$", 
     labelrsep=0.5, figsize=(7*a, 2.5*a), color="blue", linestyle="--")
-phasorcosine(abs(U2_after[2]), angle(U2_after[2]), ylabel=L"$i$", maglabel=L"$\hat{V1}_b$", 
+phasorcosine(abs(U2_complex_aft[2]), angle(U2_complex_aft[2]), ylabel=L"$i$", maglabel=L"$\hat{U2}_b$", 
     labelrsep=0.5, color="green", linestyle="--", add=true)
-phasorcosine(abs(U2_after[3]), angle(U2_after[3]), ylabel=L"$i$", maglabel=L"$\hat{V1}_c$ ", 
+phasorcosine(abs(U2_complex_aft[3]), angle(U2_complex_aft[3]), ylabel=L"$i$", maglabel=L"$\hat{U2}_c$ ", 
     labelrsep=0.5, color="red", linestyle="--", add=true)
-phasorcosine(abs(U2_after[4]), angle(U2_after[4]), ylabel=L"$i$", maglabel=L"$\hat{V1}_n$ ", 
+phasorcosine(abs(U2_complex_aft[4]), angle(U2_complex_aft[4]), ylabel=L"$i$", maglabel=L"$\hat{U2}_n$ ", 
+    labelrsep=0.5, color="red", linestyle="--", add=true)
+
+gcf()
+
+
+
+println("Plotting  Voltage at bus 3 before Compensation")
+phasorcosine(abs(U3_complex_before[1]), angle(U3_complex_before[1]), ylabel=L"$i$", maglabel=L"$\hat{U3}_a$", 
+    labelrsep=0.5, figsize=(7*a, 2.5*a), color="blue", linestyle="--")
+phasorcosine(abs(U3_complex_before[2]), angle(U3_complex_before[2]), ylabel=L"$i$", maglabel=L"$\hat{U3}_b$", 
+    labelrsep=0.5, color="green", linestyle="--", add=true)
+phasorcosine(abs(U3_complex_before[3]), angle(U3_complex_before[3]), ylabel=L"$i$", maglabel=L"$\hat{U3}_c$ ", 
+    labelrsep=0.5, color="red", linestyle="--", add=true)
+phasorcosine(abs(U3_complex_before[4]), angle(U3_complex_before[4]), ylabel=L"$i$", maglabel=L"$\hat{U3}_n$ ", 
+    labelrsep=0.5, color="red", linestyle="--", add=true)
+
+gcf()
+
+println("Plotting Voltage at bus 3 after Compensation")
+phasorcosine(abs(U3_complex_aft[1]), angle(U3_complex_aft[1]), ylabel=L"$i$", maglabel=L"$\hat{U3}_a$", 
+    labelrsep=0.5, figsize=(7*a, 2.5*a), color="blue", linestyle="--")
+phasorcosine(abs(U3_complex_aft[2]), angle(U3_complex_aft[2]), ylabel=L"$i$", maglabel=L"$\hat{U3}_b$", 
+    labelrsep=0.5, color="green", linestyle="--", add=true)
+phasorcosine(abs(U3_complex_aft[3]), angle(U3_complex_aft[3]), ylabel=L"$i$", maglabel=L"$\hat{U3}_c$ ", 
+    labelrsep=0.5, color="red", linestyle="--", add=true)
+phasorcosine(abs(U3_complex_aft[4]), angle(U3_complex_aft[4]), ylabel=L"$i$", maglabel=L"$\hat{U3}_n$ ", 
     labelrsep=0.5, color="red", linestyle="--", add=true)
 
 gcf()
