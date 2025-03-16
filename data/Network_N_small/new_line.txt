@@ -1,4 +1,4 @@
 New Line.line_75588050_2_1 Units=km Length=0.055700000762939454 bus1=1.1.2.3.4 bus2=2.1.2.3.4 switch=n enabled=y phases=3 Geometry=Cable_LVABC4x95
-New Line.line_75588639_3_2 Units=km Length=0.03929999923706055 bus1=2.1.2.3.4 bus2=3.1.2.3.4 switch=n enabled=y phases=3 Geometry=Cable_LVABC4x95
+New Line.line_75588639_3_2 Units=km Length=0.03929999923706055 bus1=2.1.2.3.4 bus2=3.1.2.3.4 switch=n enabled=y phases=3 Geometry=OH_Mars_hori4w
 
 !OH_Libra_hori4w
