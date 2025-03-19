@@ -147,7 +147,7 @@ I_l23_before= calculate_current("Line.line_75588639_3_2")
 I_l23_sym_before = calculate_symmetrical_components(I_l23_before[1:3])# current I_sub symmetrical components
 [round(i, digits=2) for i in I_l23_sym_before]# rounding the measurement
 ## current unbalance factor
-PCBF_2before = calaculate_PCBF(I_l23_before)
+PCBF_3before = calaculate_PCBF(I_l23_before)
 _ODSS.Circuit.SetActiveElement("Line.line_75588639_3_2")
 I_l23_mags_before = _ODSS.CktElement.CurrentsMagAng()[9:16] # to get the magnitude and angle
 [round(i, digits=2) for i in I_l23_mags_before]
@@ -222,7 +222,7 @@ I_l23_after= calculate_current("Line.line_75588639_3_2")
 I_l23_sym_after = calculate_symmetrical_components(I_l23_after[1:3])# current I_sub symmetrical components
 [round(i, digits=2) for i in I_l23_sym_after]# rounding the measurement
 ## current unbalance factor
-PCBF_2after = calaculate_PCBF(I_l23_after)
+PCBF_3after = calaculate_PCBF(I_l23_after)
 _ODSS.Circuit.SetActiveElement("Line.line_75588639_3_2")
 I_l23_mags_after = _ODSS.CktElement.CurrentsMagAng()[9:16] # to get the magnitude and angle
 [round(i, digits=2) for i in I_l23_mags_after]
