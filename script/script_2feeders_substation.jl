@@ -173,7 +173,7 @@ I_comp_sym = calculate_symmetrical_components(I_comp)
 mag_I_comp = abs.(I_comp)
 ang_I_comp = angle.(I_comp) .* (180 / π)
 
-### 4- Inject Compensation Current at the end of feeder 1
+### 4- Inject Compensation Current at the substation
 for (i, phase) in enumerate(["1.4", "2.4", "3.4"])
     OpenDSSDirect.Text.Command("New ISource.IDG$i Bus1=1.$phase Phases=1  , amps = $(mag_I_comp[i]), ang = $(ang_I_comp[i])")
 end

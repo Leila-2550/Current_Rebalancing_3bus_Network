@@ -1,4 +1,3 @@
 !dummy
 ! network with 2 feeders
-!I changed the basekv from 22 to 11 and added the loads at the substation
-!changed the transform name from 1 to tr1 and the sourcebus from sourcebus_22000 to sourcebus_11000
+! each feeder has 2 buses with 3 single phase loads connected to each bus
