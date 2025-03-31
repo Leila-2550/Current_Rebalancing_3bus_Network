@@ -90,6 +90,46 @@ function calculate_current(element_name)
     I_n = round(currents[8], digits=2)
     return [I_a, I_b, I_c, I_n] 
 end
+
+## function to calculate different voltgae parameters for a specific bus
+function analyse_bus_voltage(bus_name)
+    U = measure_voltage(bus_name)
+    U_complex = convert_to_complex(U)
+    U_symm = calculate_symmetrical_components(U_complex[1:3])
+    U_sym = [round(v, digits=2) for v in U_symm] # rounding the measurement
+    # voltage unbalance factor
+    VUF = calculate_VUF(U_sym)
+    VUF = [round(v, digits=4) for v in VUF] # rounding the measurement
+    return U,U_complex, U_sym, VUF
+end
+
+## Function to analyse the current at a specific element
+function analyse_current(element_name)
+    # Get phase currents
+    I = calculate_current(element_name)
+    # Calculate symmetrical components
+    I_symm = calculate_symmetrical_components(I[1:3])
+    I_sym = [round(i, digits=2) for i in I_symm]  # Rounding
+    # Calculate current unbalance factor
+    PCBF = calaculate_PCBF(I)
+    # Get current magnitudes and angles
+    _ODSS.Circuit.SetActiveElement(element_name)
+    I_mags = _ODSS.CktElement.CurrentsMagAng()[9:16]  # Extract magnitude and angle
+    I_mags = [round(i, digits=2) for i in I_mags]  # Rounding
+    return I,I_mags, I_sym, PCBF
+end
+
+# Function to retrieve voltage magnitudes for all buses
+function get_bus_voltages()
+    bus_voltages = Dict()
+    for bus in all_buses
+        _ODSS.Circuit.SetActiveBus(bus)
+        voltage = _ODSS.Bus.PuVoltage()
+        voltage_mag = [abs(v) for v in voltage[1:3]] # Get voltage magnitudes for three phases
+        bus_voltages[bus] = voltage_mag  # Store all three phases instead of mean
+    end
+    return bus_voltages
+end
 ##################
 # Main Script
 ##################
@@ -220,6 +260,7 @@ I_l12_mags_after = _ODSS.CktElement.CurrentsMagAng()[9:16] # to get the magnitud
 #current I_L23
 I_l23_after= calculate_current("Line.line_75588639_3_2")
 I_l23_sym_after = calculate_symmetrical_components(I_l23_after[1:3])# current I_sub symmetrical components
+
 [round(i, digits=2) for i in I_l23_sym_after]# rounding the measurement
 ## current unbalance factor
 PCBF_2after = calaculate_PCBF(I_l23_after)

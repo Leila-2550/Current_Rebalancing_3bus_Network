@@ -9,6 +9,8 @@ Redirect new_linecode.txt
 Redirect new_line.txt
 Redirect new_load.txt
 Redirect new_reactor.txt
+Redirect Mv_line.txt
+Redirect MV_side.txt
 
 Set Voltagebases=[0.4, 0.415, 11.0]
 

@@ -1,1 +1,5 @@
-dummy
+!dummy
+!updated the grounding impedance matrix
+!disconnected other single phase buses such as:7025, 7691,7785
+!change the direction of 6687 to 7153
+!disconnected the loads to 7785 and 7691

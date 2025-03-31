@@ -1,0 +1,14 @@
+!Define the data related to MVside
+
+!Zone transformer is connected between TransmissionBus and MVBus1
+! Define Substation Transformer (33 to 11 kV)
+New Transformer.Zone Phases=3 Windings=2 XHL=7 wdg=1 bus=TransmissionBus kV=33 kVA=20000 conn=delta %r=0.5 tap=1.0 maxtap=1.1 mintap=0.9 
+wdg=2 bus=MVBus1 kV=11 kVA=20000 conn=wye %r=0.5
+
+! Define Medium Voltage Line Code (Impedance for MV cables)
+New LineCode.MVLineCode nphases=3 BaseFreq=50 Units=km
+~ R1=0.2 X1=0.4 R0=0.6 X0=0.8 C1=0 C0=0
+
+! Define Medium Voltage Feeders (Connecting to LV networks)
+New Line.MVFeeder1 Phases=3 Bus1=MVBus1 Bus2=sourcebus_11000 Length=5 Units=km LineCode=MVLineCode
+
