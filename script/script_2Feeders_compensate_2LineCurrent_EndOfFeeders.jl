@@ -1,3 +1,6 @@
+## the difference of this script with the other 2 feeder script is:the other 
+#one compensate the current of the transformer at the substtaion but this one 
+#compensate the current of those line connected to the transformer at the substation
 using Pkg
 using OpenDSSDirect
 import LinearAlgebra: cis
@@ -27,7 +30,7 @@ F_inv = [1 1 1; 1 α^2 α; 1 α α^2] # Inverse Fortescue transformation matrix
 
 #  Tap position
 tap_position = 1.0
-OpenDSSDirect.Circuit.SetActiveElement("Transformer.tr1")
+OpenDSSDirect.Circuit.SetActiveElement("Transformer.Zone")
 OpenDSSDirect.Transformers.Tap(tap_position)
 OpenDSSDirect.Solution.Solve() # Solving the network
 
@@ -168,14 +171,7 @@ I_comp1_n= sum(I_comp1)
 I_comp1_sym = calculate_symmetrical_components(I_comp1)
 [round(i, digits=2) for i in I_comp1_sym]# rounding the measurement
 # Compute magnitude and phase angle (in degrees) for each phase
-mag1_I_comp1, mag2_I_comp1, mag3_I_comp1= abs.(I_comp1)  # Compute magnitude
-ang1_I_comp1, ang2_I_comp1, ang3_I_comp1= angle.(I_comp1) .* (180 / π)  # Convert radians to degrees
-
 ######## ADD COMPENSATOR ########
-## 5- Injecting the compensation current as current sources to the end of feeder
-# OpenDSSDirect.Text.Command("New ISource.IDG1 Bus1=3.1.4 Phases=1  , amps = $mag1_I_comp, ang = $ang1_I_comp")
-# OpenDSSDirect.Text.Command("New ISource.IDG2 Bus1=3.2.4 Phases=1  , amps = $mag2_I_comp, ang = $ang2_I_comp")
-# OpenDSSDirect.Text.Command("New ISource.IDG3 Bus1=3.3.4 Phases=1  , amps = $mag3_I_comp, ang = $ang3_I_comp")
 
 mag_I_comp1 = abs.(I_comp1)
 ang_I_comp1 = angle.(I_comp1) .* (180 / π)
@@ -188,21 +184,15 @@ end
 all_elements = OpenDSSDirect.Circuit.AllElementNames()## returns all th elements names in the network
 ########## 
 
-
 I_comp2 = -F_inv * M2 * F * (Current_before["Line.line_F2_4_1"].I_complex[1:3])
 [round(i, digits=2) for i in I_comp2]# rounding the measurement
 I_comp2_n= sum(I_comp2)
 I_comp2_sym = calculate_symmetrical_components(I_comp2)
 [round(i, digits=2) for i in I_comp2_sym]# rounding the measurement
 # Compute magnitude and phase angle (in degrees) for each phase
-mag1_I_comp2, mag2_I_comp2, mag3_I_comp2= abs.(I_comp2)  # Compute magnitude
-ang1_I_comp2, ang2_I_comp2, ang3_I_comp2= angle.(I_comp2) .* (180 / π)  # Convert radians to degrees
 
 ######## ADD COMPENSATOR ########
 ## 5- Injecting the compensation current as current sources to the end of feeder
-# OpenDSSDirect.Text.Command("New ISource.IDG1 Bus1=3.1.4 Phases=1  , amps = $mag1_I_comp, ang = $ang1_I_comp")
-# OpenDSSDirect.Text.Command("New ISource.IDG2 Bus1=3.2.4 Phases=1  , amps = $mag2_I_comp, ang = $ang2_I_comp")
-# OpenDSSDirect.Text.Command("New ISource.IDG3 Bus1=3.3.4 Phases=1  , amps = $mag3_I_comp, ang = $ang3_I_comp")
 
 mag_I_comp2 = abs.(I_comp2)
 ang_I_comp2 = angle.(I_comp2) .* (180 / π)
@@ -256,9 +246,8 @@ voltage_after = get_bus_voltages()
 using Pkg
 using Plots
 
-
 ## 1- Plotting Bus Voltages per Phase Before and After Compensation
-bus_labels = ["sourcebus", "1", "2", "3", "4", "5"]
+bus_labels = ["sourcebus_11000", "1", "2", "3", "4", "5"]
 bus_indices = collect(1:length(bus_labels))  # Numeric indices for buses
 
 
@@ -284,7 +273,7 @@ plot!(bus_indices, voltages_after_phase3, label="After - Phase C", marker=:squar
 
 bar_width= 0.12
 bar(bus_indices .- 1.5 * bar_width, voltages_before_phase1;
-    bar_width=bar_width, label="Before - Phase A", color=:blue, legend=:topright,
+    bar_width=bar_width, label="Before - Phase A", color=:blue, legend=:bottomleft,
     xticks=(bus_indices, bus_labels), xlabel="Bus", ylabel="Voltage (p.u.)",
     title="Voltage Magnitude Profile per Phase (Before vs After Compensation)")
 
@@ -425,24 +414,30 @@ bar!(line_indices .+ bar_width/2, line_after_mags;
 I_sub_before_mags = I_before["Transformer.tr1"]
 I_sub_after_mags = I_after["Transformer.tr1"]
 
-plot(phase_indices, I_sub_before_mags, 
-    label="Before Compensation", 
-    marker=:circle, 
-    linestyle=:solid, 
-    color=:blue, 
-    xlabel="Phase", 
-    ylabel="Current Magnitude (A)", 
-    title="Transformer Current Magnitude Before & After Compensation",
-    legend=:best
+phase_labels = ["Phase A", "Phase B", "Phase C", "Neutral"]
+phase_indices = collect(1:4)
+
+# Bar settings
+bar_width = 0.2
+
+# Create bar plot
+bar(phase_indices .- bar_width/2, I_sub_before_mags;
+    bar_width=bar_width,
+    label="Before Compensation",
+    color=:blue,
+    xticks=(phase_indices, phase_labels),
+    xlabel="Phase",
+    ylabel="Current Magnitude (A)",
+    title="Transformer Current Magnitude (Before vs After Compensation)",
+    legend=:topright,
+    size=(600, 400)
 )
 
-plot!(phase_indices, I_sub_after_mags, 
-    label="After Compensation", 
-    marker=:square, 
-    linestyle=:dash, 
+bar!(phase_indices .+ bar_width/2, I_sub_after_mags;
+    bar_width=bar_width,
+    label="After Compensation",
     color=:red
 )
-
 ### ---4. Phasor plots
 using Unitful, Unitful.DefaultSymbols, PyPlot, ElectricalEngineering
 a = 2.0  # Plot scale

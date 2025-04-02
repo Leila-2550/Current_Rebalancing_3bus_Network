@@ -3,4 +3,4 @@ New Reactor.HG1 phases=1 bus1=2.4 bus2=2.0 R=0.1 X=0
 New Reactor.HG2 phases=1 bus1=3.4 bus2=3.0 R=0.1 X=0
 New Reactor.HG3 phases=1 bus1=4.4 bus2=4.0 R=0.1 X=0
 New Reactor.HG4 phases=1 bus1=5.4 bus2=5.0 R=0.1 X=0
-
+New Reactor.HG5 phases=1 bus1=MVBus1.4 bus2=MVBus1.0 R=0.1 X=0.01

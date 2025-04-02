@@ -1,18 +1,19 @@
 Clear
 
-New Circuit.N  bus1=sourcebus_11000 pu=1.0 basekV=11.0
+New Circuit.N  bus1=TransmissionBus pu=1.0 basekV=33.0
 Set DefaultBaseFrequency=50
 set earthmodel=Carson
 
 Redirect new_transformer.txt
 Redirect new_linecode.txt
 Redirect new_line.txt
-Redirect new_load.txt
+!Redirect new_load.txt
 Redirect new_reactor.txt
-Redirect Mv_line.txt
+!Redirect MV_line.txt
 Redirect MV_side.txt
+Redirect new_load_unbalanced.txt
 
-Set Voltagebases=[0.4, 0.415, 11.0]
+Set Voltagebases=[0.4, 0.415, 11.0, 33.0]
 
 Calcvoltagebases
 

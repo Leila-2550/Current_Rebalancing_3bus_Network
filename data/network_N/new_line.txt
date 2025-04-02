@@ -1,3 +1,8 @@
+! Define Medium Voltage Feeders (Connecting to LV networks)
+New Line.MVFeeder1 Phases=3 Bus1=MVBus1 Bus2=sourcebus_11000 Length=5 Units=km LineCode=MVLineCode
+! Define Medium Voltage Feeders (Connecting to LV networks)
+!New Line.MVFeeder1 Phases=3 Bus1=MVBus1 Bus2=sourcebus_11000 Length=5 Units=km LineCode=MVLineCode
+
 New Line.line_75587985_6802_6623 Units=km Length=0.009100000381469726 bus1=6623.1.2.3.4 bus2=6802.1.2.3.4 switch=n enabled=y phases=3 Geometry=OH_Sultana_hori4w
 New Line.line_75587987_6822_6625 Units=km Length=0.008300000190734864 bus1=6625.3.4 bus2=6822.3.4 switch=n enabled=y phases=1 Geometry=OH_Sultana_hori2w
 New Line.line_75588022_6986_6660 Units=km Length=0.03570000076293946 bus1=6660.1.2.3.4 bus2=6986.1.2.3.4 switch=n enabled=y phases=3 Geometry=OH_Mars_hori4w

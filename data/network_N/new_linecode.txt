@@ -1,3 +1,8 @@
+
+! Define Medium Voltage Line Code (Impedance for MV cables)
+New LineCode.MVLineCode nphases=3 BaseFreq=50 Units=km
+~ R1=0.2 X1=0.4 R0=0.6 X0=0.8 C1=0 C0=0
+
 !!-------------------------------------wiredata-------------------------------------!!
 
 !!Overhead

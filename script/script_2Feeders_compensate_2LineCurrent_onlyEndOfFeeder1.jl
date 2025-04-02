@@ -1,3 +1,6 @@
+## the difference of this script with the other 2 feeder script is:the other 
+#one compensate the current of the transformer at the substtaion but this one 
+#compensate the current of those line connected to the transformer at the substation
 using Pkg
 using OpenDSSDirect
 import LinearAlgebra: cis
@@ -5,8 +8,7 @@ using Plots
 const _ODSS = OpenDSSDirect
 
 ## Define OpenDSS circuit and model path
-path = "/Users/raj055/Documents/GitHub/Current_Rebalancing_3bus_Network/data/network_N" # network with 2 feeders
-#this is the network data with MV side added
+path = "/Users/raj055/Documents/GitHub/Current_Rebalancing_3bus_Network/data/NetworkN_small_2Feeders" # network with 2 feeders
 filename = path*"/Master.dss"
 ## Solving The Test Case (Unisng OpenDSS)
 dss("""
@@ -24,30 +26,10 @@ dss("""
 α = cis(2π / 3)
 F = (1 / 3) * [1 1 1; 1 α α^2; 1 α^2 α] # Fortescue transformation matrix
 F_inv = [1 1 1; 1 α^2 α; 1 α α^2] # Inverse Fortescue transformation matrix
-## to modify load kw## no need in current code
-using Printf
-input_path = "new_load.txt"
-output_path = "new_load_unbalanced.txt"
-lines = readlines(input_path)
-new_lines = String[]
-for line in lines
-    if occursin(".1.4", line)
-        m = match(r"kW=(\d+\.?\d*)", line)
-        if m !== nothing
-            original_kw = parse(Float64, m.captures[1])
-            new_kw = round(original_kw * 2.5, digits=2)
-            # Replace only the kW value
-            line = replace(line, r"kW=\d+\.?\d*" => "kW=$(new_kw)")
-        end
-    end
-    push!(new_lines, line)
-end
-write(output_path, join(new_lines, "\n"))
-#########
+
 #  Tap position
 tap_position = 1.0
 OpenDSSDirect.Circuit.SetActiveElement("Transformer.Zone")
-OpenDSSDirect.Transformers.Wdg(2.0)
 OpenDSSDirect.Transformers.Tap(tap_position)
 OpenDSSDirect.Solution.Solve() # Solving the network
 
@@ -155,52 +137,24 @@ end
 ##1- calculate voltage at all buses and calculate the voltage unbalance factor (VUF)
 Bus_voltage_before = Dict()
 #store voltage data in a dictionary
-for bus in ["6687", "7153", "6679", "6715", "6732","6925","6625"]
+for bus in ["1", "2", "3", "4", "5"]
     U,U_complex, U_sym, VUF = analyse_bus_voltage(bus)
     Bus_voltage_before[bus] = (U=U,U_complex, Sym=U_sym, VUF=VUF)  # Store as named tuple
 end
 #printing results
-for bus in ["6687", "7153", "6679", "6715", "6732","6925","6625"]
+for bus in ["1", "2", "3", "4", "5"]
     U,U_complex, U_sym, VUF = analyse_bus_voltage(bus)
     println("Bus $bus: U_before$bus:$U, Sym. Components_before$bus: $U_sym, VUF_before$bus: $VUF")
 end
 
-########## change the tap position and solve the circuit again
-analyse_bus_voltage("6687")
-OpenDSSDirect.Circuit.SetActiveElement("Transformer.Zone")
-OpenDSSDirect.Transformers.Wdg(2.0)
-OpenDSSDirect.Transformers.Tap(2.1)
-OpenDSSDirect.Solution.Solve()
-analyse_bus_voltage("6687")
-using Plots
-tap_values = 0.9:0.02:2.1
-voltages_phaseA = Float64[]
-for tap in tap_values
-    OpenDSSDirect.Circuit.SetActiveElement("Transformer.Zone")
-    OpenDSSDirect.Transformers.Wdg(2.0)
-    OpenDSSDirect.Transformers.Tap(tap)
-    OpenDSSDirect.Solution.Solve()
-    U, _, _, _ = analyse_bus_voltage("6687")
-    push!(voltages_phaseA, U[1][1])  # Magnitude of Phase A
-end
-plot(tap_values, voltages_phaseA,
-    xlabel="Tap Setting",
-    ylabel="Phase A Voltage at Bus 6687 (V)",
-    title="Effect of Tap Change on Voltage at Bus 6687",
-    marker=:circle,
-    linewidth=2)
-###################
-
-# Line.line_75588050_6732_6687 , Line.line_75589080_7153_6687, Line.line_75588103_6679_6715, Line.line_75588050_6732_6687, Line.line_75588520_6925_6985,Line.line_75588758_6625_6660
 ### 2- Calculate current and phase current balance factor (PCBF) at the substation and other lines 
 Current_before = Dict()
 #store current data in a dictionary
-for element in ["Transformer.tr1", "Line.line_75588050_6732_6687" , "Line.line_75589080_7153_6687", "Line.line_75588103_6679_6715", "Line.line_75588050_6732_6687", "Line.line_75588520_6925_6985","Line.line_75588758_6625_6660"]
+for element in ["Transformer.tr1", "Line.line_F1_2_1", "Line.line_F1_3_2", "Line.line_F2_4_1", "Line.line_F2_5_4"]
     I,I_mags, I_sym, PCBF= analyse_current(element)
     Current_before[element] = (I_complex= I, I_mag=I_mags, I_Sym=I_sym, PCBF=PCBF)  # Store as named tuple
 end
-#printing results
-for element in ["Transformer.tr1", "Line.line_75588050_6732_6687" , "Line.line_75589080_7153_6687", "Line.line_75588103_6679_6715", "Line.line_75588050_6732_6687", "Line.line_75588520_6925_6985","Line.line_75588758_6625_6660"]
+for element in ["Transformer.tr1", "Line.line_F1_2_1", "Line.line_F1_3_2", "Line.line_F2_4_1", "Line.line_F2_5_4"]
     I,I_mags, I_sym, PCBF= analyse_current(element)
     println("Element$element: I_complex_before:$I, I_mag_before: $I_mags, I_sym_before: $I_sym, PCBF_before: $PCBF")
 end
@@ -210,7 +164,7 @@ end
 M1= [0 0 0; 0 0 0;0 0 1]# only zero sequence
 M2= [1 0 0; 0 0 0;0 0 1]# negative and zero sequence ***
 
-I_comp1 = -F_inv * M2 * F * (Current_before["Line.line_75589080_7153_6687"].I_complex[1:3])
+I_comp1 = -F_inv * M2 * F * (Current_before["Line.line_F1_2_1"].I_complex[1:3])
 [round(i, digits=2) for i in I_comp1]# rounding the measurement
 I_comp1_n= sum(I_comp1)
 I_comp1_sym = calculate_symmetrical_components(I_comp1)
@@ -219,39 +173,25 @@ I_comp1_sym = calculate_symmetrical_components(I_comp1)
 mag1_I_comp1, mag2_I_comp1, mag3_I_comp1= abs.(I_comp1)  # Compute magnitude
 ang1_I_comp1, ang2_I_comp1, ang3_I_comp1= angle.(I_comp1) .* (180 / π)  # Convert radians to degrees
 
+######## ADD COMPENSATOR ########
+## 5- Injecting the compensation current as current sources to the end of feeder
+# OpenDSSDirect.Text.Command("New ISource.IDG1 Bus1=3.1.4 Phases=1  , amps = $mag1_I_comp, ang = $ang1_I_comp")
+# OpenDSSDirect.Text.Command("New ISource.IDG2 Bus1=3.2.4 Phases=1  , amps = $mag2_I_comp, ang = $ang2_I_comp")
+# OpenDSSDirect.Text.Command("New ISource.IDG3 Bus1=3.3.4 Phases=1  , amps = $mag3_I_comp, ang = $ang3_I_comp")
+
 mag_I_comp1 = abs.(I_comp1)
 ang_I_comp1 = angle.(I_comp1) .* (180 / π)
 
 ### 4- Inject Compensation Current at the end of feeder 1
 for (i, phase) in enumerate(["1.4", "2.4", "3.4"])
-    OpenDSSDirect.Text.Command("New ISource.IDG1$i Bus1=6715.$phase Phases=1  , amps = $(mag_I_comp1[i]), ang = $(ang_I_comp1[i])")
+    OpenDSSDirect.Text.Command("New ISource.IDG1$i Bus1=3.$phase Phases=1  , amps = $(mag_I_comp1[i]), ang = $(ang_I_comp1[i])")
 end
 ##validate that the current sources are added to the network
 all_elements = OpenDSSDirect.Circuit.AllElementNames()## returns all th elements names in the network
 ########## 
 
-
-I_comp2 = -F_inv * M2 * F * (Current_before["Line.line_75588050_6732_6687"].I_complex[1:3])
-[round(i, digits=2) for i in I_comp2]# rounding the measurement
-I_comp2_n= sum(I_comp2)
-I_comp2_sym = calculate_symmetrical_components(I_comp2)
-[round(i, digits=2) for i in I_comp2_sym]# rounding the measurement
-# Compute magnitude and phase angle (in degrees) for each phase
-mag1_I_comp2, mag2_I_comp2, mag3_I_comp2= abs.(I_comp2)  # Compute magnitude
-ang1_I_comp2, ang2_I_comp2, ang3_I_comp2= angle.(I_comp2) .* (180 / π)  # Convert radians to degrees
-
-######## ADD COMPENSATOR ########
-mag_I_comp2 = abs.(I_comp2)
-ang_I_comp2 = angle.(I_comp2) .* (180 / π)
-
-### 4- Inject Compensation Current at the end of feeder 2
-for (i, phase) in enumerate(["1.4", "2.4", "3.4"])
-    OpenDSSDirect.Text.Command("New ISource.IDG2$i Bus1=6625.$phase Phases=1  , amps = $(mag_I_comp2[i]), ang = $(ang_I_comp2[i])")
-end
-
-
 ## 5- Get voltage magnitudes before compensation
-all_buses = ["sourcebus_11000","6687", "7153", "6679", "6715", "6732","6925","6625"] #_ODSS.Circuit.AllBusNames()
+all_buses = _ODSS.Circuit.AllBusNames()
 # Get bus voltage magnitudes before compensation
 voltage_before = get_bus_voltages()
 ###########
@@ -262,24 +202,24 @@ OpenDSSDirect.Solution.Solve()
 ### 7- Substation current after compensation
 Current_after = Dict()
 #store current data in a dictionary
-for element in ["Transformer.tr1", "Line.line_75588050_6732_6687" , "Line.line_75589080_7153_6687", "Line.line_75588103_6679_6715", "Line.line_75588520_6925_6985","Line.line_75588758_6625_6660"]
+for element in ["Transformer.tr1", "Line.line_F1_2_1", "Line.line_F1_3_2", "Line.line_F2_4_1", "Line.line_F2_5_4"]
     I,I_mags, I_sym, PCBF= analyse_current(element)
     Current_after[element] = (I_complex= I, I_mag=I_mags, I_Sym=I_sym, PCBF=PCBF)  # 
 end
 #printing results
-for element in ["Transformer.tr1", "Line.line_75588050_6732_6687" , "Line.line_75589080_7153_6687", "Line.line_75588103_6679_6715", "Line.line_75588520_6925_6985","Line.line_75588758_6625_6660"]
+for element in ["Transformer.tr1", "Line.line_F1_2_1", "Line.line_F1_3_2", "Line.line_F2_4_1", "Line.line_F2_5_4"]
     I,I_mags, I_sym, PCBF= analyse_current(element)
     println("Element$element: I_complex_after:$I, I_mag_after: $I_mags, I_sym_after: $I_sym, PCBF_after: $PCBF")
 end
 #### 8- voltage at all buses after compensation
 Bus_voltage_after = Dict()
 #store voltage data in a dictionary
-for bus in ["6687", "7153", "6679", "6715", "6732","6925","6625"]
+for bus in ["1", "2", "3", "4", "5"]
     U,U_complex, U_sym, VUF = analyse_bus_voltage(bus)
     Bus_voltage_after[bus] = (U=U,U_complex, Sym=U_sym, VUF=VUF)  # 
 end
 #printing results
-for bus in ["6687", "7153", "6679", "6715", "6732","6925","6625"]
+for bus in ["1", "2", "3", "4", "5"]
     U,U_complex, U_sym, VUF = analyse_bus_voltage(bus)
     println("Bus$bus: U_after:$U, Sym.Comp_after: $U_sym, VUF_after: $VUF")
 end
@@ -293,7 +233,7 @@ using Plots
 
 
 ## 1- Plotting Bus Voltages per Phase Before and After Compensation
-bus_labels = ["sourcebus_11000","6687", "7153", "6679", "6715", "6732","6925","6625"]
+bus_labels = ["sourcebus_11000", "1", "2", "3", "4", "5"]
 bus_indices = collect(1:length(bus_labels))  # Numeric indices for buses
 
 
@@ -316,7 +256,7 @@ plot!(bus_indices, voltages_before_phase3, label="Before - Phase C", marker=:cir
 plot!(bus_indices, voltages_after_phase1, label="After - Phase A", marker=:square, linestyle=:dash, color=:lightblue)
 plot!(bus_indices, voltages_after_phase2, label="After - Phase B", marker=:square, linestyle=:dash, color=:lightgreen)
 plot!(bus_indices, voltages_after_phase3, label="After - Phase C", marker=:square, linestyle=:dash, color=:pink)
-#bar plot
+
 bar_width= 0.12
 bar(bus_indices .- 1.5 * bar_width, voltages_before_phase1;
     bar_width=bar_width, label="Before - Phase A", color=:blue, legend=:bottomleft,
@@ -339,17 +279,15 @@ bar!(bus_indices .+ 3.5 * bar_width, voltages_after_phase3;
     bar_width=bar_width, label="After - Phase C", color=:pink)
 
 
+using Plots
 
 # Define the elements (lines and transformer) for which we have current data
-elements = ["Transformer.tr1", "Line.line_75588050_6732_6687" , "Line.line_75589080_7153_6687", "Line.line_75588103_6679_6715", "Line.line_75588520_6925_6985","Line.line_75588758_6625_6660"]
+elements = ["Transformer.tr1", "Line.line_F1_2_1", "Line.line_F1_3_2", "Line.line_F2_4_1", "Line.line_F2_5_4"]
 
 # Extract current magnitudes before and after compensation
 I_before = Dict(el => abs.(Current_before[el].I_complex) for el in elements)
 I_after = Dict(el => abs.(Current_after[el].I_complex) for el in elements)
-
 # --- 1. Plot Current Magnitude Comparison for Each Line ---
-
-using Plots
 # Ensure dictionaries contain data
 if isempty(I_before) || isempty(I_after)
     error("Data in I_before or I_after is empty. Check the source dictionary.")
@@ -371,21 +309,20 @@ for el in elements
         xticks=(phase_indices, phase_labels), 
         size=(600, 400)
     )
-
     plot!(p, phase_indices, I_after[el], 
         label="After Compensation", 
         marker=:square, 
         linestyle=:dash, 
         color=:red
     )
-
     display(p)  # Show the plot
 end
-#bar plot
+
 bar_width=0.2
 for el in elements
     currents_before = I_before[el]
     currents_after = I_after[el]
+
     # Bar plot comparing before and after compensation
     bar(phase_indices .- bar_width/2, currents_before;
         bar_width=bar_width, label="Before Compensation", color=:blue,
@@ -400,7 +337,6 @@ for el in elements
 
     display(current())  # Show the plot
 end
-
 # --- 2. Combined Line Current Profile ---
 line_labels = []
 line_before_mags = []
@@ -463,28 +399,34 @@ bar!(line_indices .+ bar_width/2, line_after_mags;
 # --- 3. Transformer Current Magnitude Before and After Compensation ---
 I_sub_before_mags = I_before["Transformer.tr1"]
 I_sub_after_mags = I_after["Transformer.tr1"]
+# Phase labels
+phase_labels = ["Phase A", "Phase B", "Phase C", "Neutral"]
+phase_indices = collect(1:4)
 
-plot(phase_indices, I_sub_before_mags, 
-    label="Before Compensation", 
-    marker=:circle, 
-    linestyle=:solid, 
-    color=:blue, 
-    xlabel="Phase", 
-    ylabel="Current Magnitude (A)", 
-    title="Transformer Current Magnitude Before & After Compensation",
-    legend=:best
+# Bar settings
+bar_width = 0.2
+
+# Create bar plot
+bar(phase_indices .- bar_width/2, I_sub_before_mags;
+    bar_width=bar_width,
+    label="Before Compensation",
+    color=:blue,
+    xticks=(phase_indices, phase_labels),
+    xlabel="Phase",
+    ylabel="Current Magnitude (A)",
+    title="Transformer Current Magnitude (Before vs After Compensation)",
+    legend=:topright,
+    size=(600, 400)
 )
 
-plot!(phase_indices, I_sub_after_mags, 
-    label="After Compensation", 
-    marker=:square, 
-    linestyle=:dash, 
+bar!(phase_indices .+ bar_width/2, I_sub_after_mags;
+    bar_width=bar_width,
+    label="After Compensation",
     color=:red
 )
-
 ### ---4. Phasor plots
 using Unitful, Unitful.DefaultSymbols, PyPlot, ElectricalEngineering
-a = 2.5  # Plot scale
+a = 2.0  # Plot scale
 # Constants for plotting
 rc("text", usetex=false); rc("font", family="sans-serif", size=16)
 
